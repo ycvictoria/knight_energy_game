@@ -1,0 +1,2 @@
+# pygame-ce es compatible con Python 3.14+ (pygame estándar puede fallar al compilar)
+pygame-ce>=2.5.0
