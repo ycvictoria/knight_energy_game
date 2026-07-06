@@ -1,13 +1,14 @@
 """
-Punto de entrada del juego Knight Energy — Paso 3.
+Punto de entrada del juego Knight Energy — Paso 4.
 
-Interfaz: menú con nombre del jugador, dificultad, panel lateral y estilo casual.
+La máquina (MAX / caballo blanco) juega con minimax; el humano (MIN) con clic.
 """
 
 import sys
 
 import pygame
 
+from src.ai.minimax import minimax_decision
 from src.config import HEIGHT, MAX, MIN, PENALTY_POINTS, WIDTH
 from src.game_logic.engine import (
     apply_penalty,
@@ -64,24 +65,63 @@ def run_menu(screen, clock, fonts):
     return selected_depth, menu.get_player_name()
 
 
-def run_game(screen, clock, renderer, player_name):
-    """Bucle principal de la partida."""
+def execute_machine_turn(state, max_depth, player_name):
+    """
+    Ejecuta el turno de la máquina con minimax.
+    Retorna (estado, mensaje_penalizacion, fin_de_partida).
+    """
+    ai_move = minimax_decision(state, max_depth)
+
+    if ai_move is not None:
+        state = result_state(state, ai_move)
+    else:
+        state, message, game_over = resolve_turn_start(state, player_name)
+        return state, message, game_over
+
+    if is_game_over(state):
+        return state, None, True
+
+    state, message, game_over = resolve_turn_start(state, player_name)
+    return state, message, game_over
+
+
+def run_game(screen, clock, renderer, player_name, max_depth):
+    """Bucle principal: máquina con minimax, humano con clic."""
     state = GameState(generate_random=True)
     game_over = False
     penalty_message = None
     penalty_timer = 0
+    machine_turn_pending = True  # MAX inicia según el enunciado
 
     state, penalty_message, game_over = resolve_turn_start(state, player_name)
     if penalty_message:
         penalty_timer = 90
+        if state.turn == MIN:
+            machine_turn_pending = False
 
     while True:
+        # Turno automático de la máquina (una vez por cambio de turno a MAX)
+        if not game_over and machine_turn_pending and state.turn == MAX:
+            valid_moves = get_valid_actions(state)
+            renderer.draw_game(
+                screen, state, valid_moves, False, player_name, "Pensando..."
+            )
+            pygame.display.flip()
+
+            state, msg, game_over = execute_machine_turn(state, max_depth, player_name)
+            machine_turn_pending = False
+
+            if msg:
+                penalty_message = msg
+                penalty_timer = 90
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
-            if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
+            # Solo el humano (MIN) mueve con el mouse
+            if event.type == pygame.MOUSEBUTTONDOWN and not game_over and state.turn == MIN:
                 if not renderer.is_board_click(event.pos):
                     continue
 
@@ -98,10 +138,12 @@ def run_game(screen, clock, renderer, player_name):
                         if msg:
                             penalty_message = msg
                             penalty_timer = 90
+                        if state.turn == MAX and not game_over:
+                            machine_turn_pending = True
 
         if game_over:
             renderer.draw_game_over(screen, state, player_name)
-        else:
+        elif not (machine_turn_pending and state.turn == MAX):
             valid_moves = get_valid_actions(state)
             highlight = state.turn == MIN
             renderer.draw_game(
@@ -126,11 +168,8 @@ def main():
     fonts = load_game_fonts()
     renderer = GameRenderer(fonts)
 
-    difficulty_depth, player_name = run_menu(screen, clock, fonts)
-    # difficulty_depth se usará en minimax (Paso 4)
-    _ = difficulty_depth
-
-    run_game(screen, clock, renderer, player_name)
+    max_depth, player_name = run_menu(screen, clock, fonts)
+    run_game(screen, clock, renderer, player_name, max_depth)
 
 
 if __name__ == "__main__":
