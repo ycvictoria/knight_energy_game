@@ -1,9 +1,8 @@
 """
-Punto de entrada del juego Knight Energy — Paso 1.
+Punto de entrada del juego Knight Energy — Paso 2.
 
-Modo actual: humano vs humano (ambos jugadores hacen clic).
-Sirve para validar tablero, movimientos en L y recolección de ítems
-antes de conectar la IA y la interfaz completa.
+Modo humano vs humano con reglas completas del PDF:
+energía, penalización por no poder mover, y fin de partida correcto.
 """
 
 import sys
@@ -20,31 +19,36 @@ from src.config import (
     LIGHT_CELL,
     MAX,
     MIN,
+    PENALTY_POINTS,
     TEXT_COLOR,
     WHITE,
     WIDTH,
 )
-from src.game_logic.engine import get_valid_actions, result_state
+from src.game_logic.engine import (
+    apply_penalty,
+    can_player_move,
+    get_valid_actions,
+    get_winner,
+    is_game_over,
+    result_state,
+)
 from src.models.state import GameState
 
 
-def draw_board(screen, state, valid_moves, font):
-    """Dibuja tablero, ítems, caballos y datos básicos (UI mínima del Paso 1)."""
+def draw_board(screen, state, valid_moves, font, penalty_message=None):
+    """Dibuja tablero, ítems, caballos y datos básicos."""
     screen.fill(BLACK)
 
     for row in range(BOARD_SIZE):
         for col in range(BOARD_SIZE):
-            # Patrón ajedrezado
             color = LIGHT_CELL if (row + col) % 2 == 0 else DARK_CELL
 
-            # Resaltar casillas válidas para el jugador del turno
             if (row, col) in valid_moves:
                 color = HIGHLIGHT_COLOR
 
             rect = pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
             pygame.draw.rect(screen, color, rect)
 
-            # Dibujar estrella (puntos) o rayo (energía) si existe en la casilla
             item = state.board[row][col]
             if item is not None:
                 center_x = col * CELL_SIZE + CELL_SIZE // 2
@@ -55,7 +59,6 @@ def draw_board(screen, state, valid_moves, font):
                     label = font.render(str(item["value"]), True, BLACK)
                     screen.blit(label, (col * CELL_SIZE + 10, row * CELL_SIZE + 8))
                 elif item["type"] == "lightning":
-                    # Forma simple de rayo
                     points = [
                         (center_x, row * CELL_SIZE + 10),
                         (col * CELL_SIZE + 15, center_y + 5),
@@ -66,7 +69,6 @@ def draw_board(screen, state, valid_moves, font):
                     label = font.render(str(item["value"]), True, WHITE)
                     screen.blit(label, (col * CELL_SIZE + 10, row * CELL_SIZE + 10))
 
-    # Caballo blanco (MAX / jugador 1 en este modo de prueba)
     wr, wc = state.white_pos
     pygame.draw.circle(
         screen,
@@ -82,7 +84,6 @@ def draw_board(screen, state, valid_moves, font):
         2,
     )
 
-    # Caballo negro (MIN / jugador 2 en este modo de prueba)
     br, bc = state.black_pos
     pygame.draw.circle(
         screen,
@@ -98,7 +99,6 @@ def draw_board(screen, state, valid_moves, font):
         2,
     )
 
-    # Texto informativo en la parte inferior (panel lateral llegará en Paso 3)
     turn_label = "Blanco (MAX)" if state.turn == MAX else "Negro (MIN)"
     info_lines = [
         f"Turno: {turn_label}",
@@ -109,14 +109,20 @@ def draw_board(screen, state, valid_moves, font):
         text = font.render(line, True, TEXT_COLOR)
         screen.blit(text, (10, HEIGHT - 80 + i * 24))
 
+    # Mensaje temporal cuando se aplica penalización (−3 puntos, pierde turno)
+    if penalty_message:
+        banner = font.render(penalty_message, True, (255, 80, 80))
+        screen.blit(banner, (10, HEIGHT - 110))
+
 
 def draw_game_over(screen, state, big_font, font):
-    """Pantalla simple de fin de partida (Paso 1: solo por estrellas agotadas)."""
+    """Pantalla de fin de partida con ganador o empate."""
     screen.fill(BLACK)
 
-    if state.white_score > state.black_score:
+    winner = get_winner(state)
+    if winner == MAX:
         message = "Gana Blanco (MAX)"
-    elif state.black_score > state.white_score:
+    elif winner == MIN:
         message = "Gana Negro (MIN)"
     else:
         message = "Empate"
@@ -134,17 +140,46 @@ def draw_game_over(screen, state, big_font, font):
     screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT // 2 + 50))
 
 
+def resolve_turn_start(state):
+    """
+    Al inicio del turno de un jugador, verifica si puede mover.
+    Si no puede y el rival sí, aplica penalización y pasa al otro.
+    Retorna (nuevo_estado, mensaje_penalizacion o None, fin_de_partida).
+    """
+    if is_game_over(state):
+        return state, None, True
+
+    if can_player_move(state, state.turn):
+        return state, None, False
+
+    # Jugador actual no puede mover: penalización según el PDF
+    penalized = apply_penalty(state)
+    player_name = "Blanco" if state.turn == MAX else "Negro"
+    message = f"Penalizacion: {player_name} -{PENALTY_POINTS} pts (sin movimiento)"
+
+    if is_game_over(penalized):
+        return penalized, message, True
+
+    return penalized, message, False
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Knight Energy — Paso 1 (Humano vs Humano)")
+    pygame.display.set_caption("Knight Energy — Paso 2 (Humano vs Humano)")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("Arial", 20)
     big_font = pygame.font.SysFont("Arial", 36)
 
-    # Tablero aleatorio según el enunciado
     state = GameState(generate_random=True)
     game_over = False
+    penalty_message = None
+    penalty_timer = 0  # frames restantes para mostrar el aviso de penalización
+
+    # Resolver turno inicial (por si algún jugador no puede mover desde el inicio)
+    state, penalty_message, game_over = resolve_turn_start(state)
+    if penalty_message:
+        penalty_timer = 90  # ~1.5 s a 60 FPS
 
     while True:
         for event in pygame.event.get():
@@ -155,7 +190,6 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
 
-                # Solo aceptar clics sobre el tablero 8x8
                 if mouse_x >= BOARD_SIZE * CELL_SIZE or mouse_y >= BOARD_SIZE * CELL_SIZE:
                     continue
 
@@ -166,14 +200,25 @@ def main():
                 if (clicked_row, clicked_col) in valid_moves:
                     state = result_state(state, (clicked_row, clicked_col))
 
-                    if state.is_terminal():
+                    if is_game_over(state):
                         game_over = True
+                    else:
+                        # Tras mover, comprobar si el siguiente jugador puede actuar
+                        state, msg, game_over = resolve_turn_start(state)
+                        if msg:
+                            penalty_message = msg
+                            penalty_timer = 90
 
         if game_over:
             draw_game_over(screen, state, big_font, font)
         else:
             valid_moves = get_valid_actions(state)
-            draw_board(screen, state, valid_moves, font)
+            draw_board(screen, state, valid_moves, font, penalty_message)
+
+            if penalty_timer > 0:
+                penalty_timer -= 1
+                if penalty_timer == 0:
+                    penalty_message = None
 
         pygame.display.flip()
         clock.tick(60)

@@ -1,4 +1,4 @@
-from src.config import BOARD_SIZE, MAX, MIN
+from src.config import BOARD_SIZE, MAX, MIN, PENALTY_POINTS
 
 # Desplazamientos en L de un caballo de ajedrez: (dfila, dcolumna)
 KNIGHT_OFFSETS = [
@@ -13,10 +13,30 @@ KNIGHT_OFFSETS = [
 ]
 
 
+def get_player_energy(state, player):
+    """Energía disponible del jugador MAX (blanco) o MIN (negro)."""
+    return state.white_energy if player == MAX else state.black_energy
+
+
+def get_player_position(state, player):
+    """Obtiene la posición del caballo según el jugador (MAX=blanco, MIN=negro)."""
+    return state.white_pos if player == MAX else state.black_pos
+
+
+def get_opponent(player):
+    """Devuelve el contrincante de MAX o MIN."""
+    return MIN if player == MAX else MAX
+
+
+def get_current_player(state):
+    """Jugador al que le corresponde mover en este estado."""
+    return state.turn
+
+
 def get_knight_moves(row, col):
     """
     Devuelve todas las casillas alcanzables en L desde (row, col) dentro del tablero.
-    No considera energía ni ocupación; eso se filtra en pasos posteriores.
+    No filtra energía ni ocupación; eso se aplica en capas superiores.
     """
     moves = []
     for dr, dc in KNIGHT_OFFSETS:
@@ -26,23 +46,77 @@ def get_knight_moves(row, col):
     return moves
 
 
-def get_player_position(state, player):
-    """Obtiene la posición del caballo según el jugador (MAX=blanco, MIN=negro)."""
-    return state.white_pos if player == MAX else state.black_pos
+def _filter_occupied_squares(state, player, moves):
+    """
+    Elimina casillas ocupadas por el caballo enemigo.
+    Convención del proyecto: los caballos no pueden compartir casilla.
+    """
+    opponent_pos = get_player_position(state, get_opponent(player))
+    return [move for move in moves if move != opponent_pos]
 
 
-def get_current_player(state):
-    """Jugador al que le corresponde mover en este estado."""
-    return state.turn
+def get_legal_moves_for_player(state, player):
+    """
+    Movimientos legales completos para un jugador concreto:
+    - Debe tener energía > 0 (cada movimiento cuesta 1 unidad).
+    - Debe ser un salto en L dentro del tablero.
+    - No puede aterrizar sobre el caballo rival.
+    """
+    if get_player_energy(state, player) <= 0:
+        return []
+
+    row, col = get_player_position(state, player)
+    raw_moves = get_knight_moves(row, col)
+    return _filter_occupied_squares(state, player, raw_moves)
 
 
 def get_valid_actions(state):
+    """Acciones legales para el jugador del turno actual."""
+    return get_legal_moves_for_player(state, state.turn)
+
+
+def can_player_move(state, player):
+    """Indica si el jugador tiene al menos un movimiento legal disponible."""
+    return len(get_legal_moves_for_player(state, player)) > 0
+
+
+def is_game_over(state):
     """
-    Acciones legales para el jugador del turno actual.
-    Paso 1: solo movimientos en L dentro del tablero (sin filtro de energía aún).
+    Fin de partida según el PDF:
+    - No quedan casillas con puntos (estrellas), o
+    - Ninguno de los dos jugadores puede realizar movimientos legales.
     """
-    row, col = get_player_position(state, state.turn)
-    return get_knight_moves(row, col)
+    if state.stars_count == 0:
+        return True
+    return not can_player_move(state, MAX) and not can_player_move(state, MIN)
+
+
+def get_winner(state):
+    """
+    Determina el resultado final comparando puntajes acumulados.
+    Retorna MAX, MIN o None si hay empate.
+    """
+    if state.white_score > state.black_score:
+        return MAX
+    if state.black_score > state.white_score:
+        return MIN
+    return None
+
+
+def apply_penalty(state):
+    """
+    Aplica penalización cuando un jugador no puede mover en su turno:
+    pierde el turno y se descuentan PENALTY_POINTS puntos (PDF: 3 puntos).
+    """
+    next_state = state.clone()
+
+    if next_state.turn == MAX:
+        next_state.white_score -= PENALTY_POINTS
+    else:
+        next_state.black_score -= PENALTY_POINTS
+
+    next_state.turn = get_opponent(next_state.turn)
+    return next_state
 
 
 def result_state(state, action):
@@ -52,9 +126,10 @@ def result_state(state, action):
     """
     next_state = state.clone()
     target_row, target_col = action
+    current_player = next_state.turn
 
     # Mover el caballo del jugador actual y descontar 1 de energía
-    if next_state.turn == MAX:
+    if current_player == MAX:
         next_state.white_pos = (target_row, target_col)
         next_state.white_energy -= 1
     else:
@@ -65,13 +140,13 @@ def result_state(state, action):
     cell = next_state.board[target_row][target_col]
     if cell is not None:
         if cell["type"] == "star":
-            if next_state.turn == MAX:
+            if current_player == MAX:
                 next_state.white_score += cell["value"]
             else:
                 next_state.black_score += cell["value"]
             next_state.stars_count -= 1
         elif cell["type"] == "lightning":
-            if next_state.turn == MAX:
+            if current_player == MAX:
                 next_state.white_energy += cell["value"]
             else:
                 next_state.black_energy += cell["value"]
@@ -80,5 +155,5 @@ def result_state(state, action):
         next_state.board[target_row][target_col] = None
 
     # Alternar turno
-    next_state.turn = MIN if next_state.turn == MAX else MAX
+    next_state.turn = get_opponent(current_player)
     return next_state

@@ -2,6 +2,7 @@ import copy
 import random
 
 from src.config import BOARD_SIZE, ENERGY_VALUES, INITIAL_ENERGY, MAX, STAR_VALUES
+from src.game_logic.engine import is_game_over
 
 
 class GameState:
@@ -56,10 +57,10 @@ class GameState:
 
     def is_terminal(self):
         """
-        Condición terminal simplificada para el Paso 1.
-        En el Paso 2 se ampliará para incluir bloqueo total de movimientos.
+        Prueba terminal del juego: delega en is_game_over del motor de reglas.
+        Usada por minimax para detectar hojas del árbol (pasos posteriores).
         """
-        return self.stars_count == 0
+        return is_game_over(self)
 
     def clone(self):
         """Copia profunda del estado (necesaria para el árbol minimax en pasos posteriores)."""
