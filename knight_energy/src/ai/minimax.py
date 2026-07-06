@@ -2,9 +2,11 @@
 Algoritmo minimax con poda alfa-beta (Paso 5).
 
 MINIMAX-DECISION con profundidad límite y evaluación heurística en el corte.
+Incluye orden de movimientos para mejorar la eficacia de la poda.
 """
 
 from src.ai.heuristics import utility
+from src.ai.move_ordering import order_actions
 from src.game_logic.engine import apply_penalty, get_valid_actions, result_state
 
 
@@ -27,7 +29,7 @@ def max_value(state, alpha, beta, depth, max_depth):
         return min_value(penalized, alpha, beta, depth + 1, max_depth)
 
     value = float("-inf")
-    for action in actions:
+    for action in order_actions(state, actions):
         successor = result_state(state, action)
         value = max(value, min_value(successor, alpha, beta, depth + 1, max_depth))
         if value >= beta:
@@ -47,7 +49,7 @@ def min_value(state, alpha, beta, depth, max_depth):
         return max_value(penalized, alpha, beta, depth + 1, max_depth)
 
     value = float("inf")
-    for action in actions:
+    for action in order_actions(state, actions):
         successor = result_state(state, action)
         value = min(value, max_value(successor, alpha, beta, depth + 1, max_depth))
         if value <= alpha:
@@ -70,7 +72,7 @@ def minimax_decision(state, max_depth):
     if not actions:
         return None
 
-    for action in actions:
+    for action in order_actions(state, actions):
         successor = result_state(state, action)
         value = min_value(successor, alpha, beta, depth=1, max_depth=max_depth)
         if value > best_value:
