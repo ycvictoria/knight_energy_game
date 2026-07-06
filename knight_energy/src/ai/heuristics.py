@@ -1,10 +1,12 @@
 """
-Función de utilidad heurística para minimax con decisiones imperfectas.
+Heurística para minimax (decisiones imperfectas).
+
+Mejora 1 — Botín alcanzable:
+  Antes: sumaba TODAS las monedas del tablero (aunque fueran lejanas).
+  Ahora: f4/f5 solo cuentan monedas y rayos alcanzables en 1 salto legal.
 
 Evaluación lineal desde la perspectiva de MAX (máquina), según Tema 6:
-  EVAL(s) = w1·f1(s) + w2·f2(s) + w3·f3(s) + w4(s) + w5·f5(s)
-
-f4 y f5 usan botín alcanzable en un salto (no todo el tablero).
+  EVAL(s) = w1·f1 + w2·f2 + w3·f3 + w4·f4 + w5·f5
 """
 
 import math
@@ -20,12 +22,11 @@ W_MOBILITY = 5
 W_REACHABLE_STARS = 50
 W_REACHABLE_LIGHTNING = 25
 
-# Solo cuenta rayos alcanzables cuando la energía está baja
-LOW_ENERGY_THRESHOLD = 3
+LOW_ENERGY_THRESHOLD = 3  # f5: rayos solo cuentan si energía <= este valor
 
 
 def _reachable_star_value(state, player):
-    """Valor de monedas capturables en el próximo salto legal."""
+    """f4: monedas que este jugador puede capturar en su próximo salto."""
     total = 0
     for row, col in get_legal_moves_for_player(state, player):
         cell = state.board[row][col]
@@ -35,7 +36,7 @@ def _reachable_star_value(state, player):
 
 
 def _reachable_lightning_value(state, player):
-    """Valor de rayos alcanzables si el jugador necesita recargar energía."""
+    """f5: rayos alcanzables cuando hace falta energía."""
     if get_player_energy(state, player) > LOW_ENERGY_THRESHOLD:
         return 0
 
@@ -48,7 +49,7 @@ def _reachable_lightning_value(state, player):
 
 
 def _mobility_difference(state):
-    """f3: movilidad de MAX menos movilidad de MIN (siempre perspectiva MAX)."""
+    """f3: cuántos movimientos legales tiene MAX menos los de MIN."""
     white_moves = len(get_legal_moves_for_player(state, MAX))
     black_moves = len(get_legal_moves_for_player(state, MIN))
     return white_moves - black_moves
@@ -56,13 +57,8 @@ def _mobility_difference(state):
 
 def eval_state(state):
     """
-    Heurística en nodos de corte (decisiones imperfectas).
-
-    f1: diferencia de puntajes (blanco - negro)
-    f2: diferencia de energía (blanco - negro)
-    f3: diferencia de movilidad legal
-    f4: monedas alcanzables en 1 salto (MAX − MIN)
-    f5: rayos alcanzables con energía baja (MAX − MIN)
+    EVAL(s) = w1·Δpuntos + w2·Δenergía + w3·Δmovilidad + w4·Δmonedas_cercanas + w5·Δrayos_cercanos
+    Siempre desde la perspectiva de MAX (máquina).
     """
     f1 = state.white_score - state.black_score
     f2 = state.white_energy - state.black_energy
@@ -80,10 +76,7 @@ def eval_state(state):
 
 
 def utility(state):
-    """
-    Utilidad en hojas del árbol minimax.
-    Terminales: ±∞ según ganador (Tema 6); no terminales: EVAL(s).
-    """
+    """Terminal: ±∞ si hay ganador; si no, heurística eval_state."""
     if state.is_terminal():
         score_diff = state.white_score - state.black_score
         if score_diff > 0:

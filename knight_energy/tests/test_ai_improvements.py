@@ -7,7 +7,7 @@ from src.ai.heuristics import (
     _reachable_star_value,
     eval_state,
 )
-from src.ai.move_ordering import order_actions
+from src.ai.move_ordering import sort_moves_best_first
 from src.config import MAX, MIN
 from src.models.state import GameState
 
@@ -57,7 +57,7 @@ class MoveOrderingTests(unittest.TestCase):
         star = (2, 1)
         actions = [empty, star]
 
-        ordered = order_actions(state, actions)
+        ordered = sort_moves_best_first(state, actions)
         self.assertEqual(ordered[0], star)
 
     def test_higher_star_before_lower(self):
@@ -70,7 +70,7 @@ class MoveOrderingTests(unittest.TestCase):
         high = (5, 2)
         actions = [low, high]
 
-        ordered = order_actions(state, actions)
+        ordered = sort_moves_best_first(state, actions)
         self.assertEqual(ordered[0], high)
 
 

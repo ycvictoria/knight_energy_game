@@ -70,8 +70,8 @@ def get_legal_moves_for_player(state, player):
     return _filter_occupied_squares(state, player, raw_moves)
 
 
-def get_valid_actions(state):
-    """Acciones legales para el jugador del turno actual."""
+def get_moves_for_current_turn(state):
+    """Casillas legales para el jugador cuyo turno es ahora (quien debe mover)."""
     return get_legal_moves_for_player(state, state.turn)
 
 
@@ -132,13 +132,14 @@ def apply_penalty(state):
     return next_state
 
 
-def result_state(state, action):
+def apply_move(state, target_cell):
     """
-    Aplica la acción (movimiento a action=(fila, col)) y devuelve el nuevo estado.
-    Implementa Result(s, a) del formalismo de juegos del Tema 6.
+    Ejecuta un salto del caballo a target_cell=(fila, col) y devuelve el tablero resultante.
+    Resta 1 energía, recoge moneda/rayo si hay, y pasa el turno al rival.
+    (Formalismo IA: Result(estado, movimiento))
     """
     next_state = state.clone()
-    target_row, target_col = action
+    target_row, target_col = target_cell
     current_player = next_state.turn
 
     # Mover el caballo del jugador actual y descontar 1 de energía

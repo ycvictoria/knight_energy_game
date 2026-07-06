@@ -13,7 +13,7 @@ from src.config import HEIGHT, MAX, MIN, WIDTH
 from src.game_logic.engine import (
     apply_penalty,
     can_player_move,
-    get_valid_actions,
+    get_moves_for_current_turn,
     is_game_over,
     must_skip_turn,
 )
@@ -112,7 +112,7 @@ def run_game(screen, clock, renderer, player_name, max_depth):
                 renderer.draw_game(
                     screen,
                     state,
-                    get_valid_actions(state),
+                    get_moves_for_current_turn(state),
                     False,
                     player_name,
                     status_message="Pensando...",
@@ -151,7 +151,7 @@ def run_game(screen, clock, renderer, player_name, max_depth):
                     continue
 
                 move = renderer.board_cell_from_click(event.pos)
-                if move not in get_valid_actions(state):
+                if move not in get_moves_for_current_turn(state):
                     continue
 
                 state = apply_move_with_animation(
@@ -166,7 +166,7 @@ def run_game(screen, clock, renderer, player_name, max_depth):
         if game_over:
             renderer.draw_game_over(screen, state, player_name)
         elif not (machine_turn_pending and state.turn == MAX):
-            valid_moves = get_valid_actions(state)
+            valid_moves = get_moves_for_current_turn(state)
             highlight = state.turn == MIN
             status = None
             if state.turn == MIN and valid_moves:
