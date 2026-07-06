@@ -80,13 +80,26 @@ def can_player_move(state, player):
     return len(get_legal_moves_for_player(state, player)) > 0
 
 
+def both_players_without_energy(state):
+    """Ambos jugadores sin energía: fin de partida por puntos."""
+    return state.white_energy <= 0 and state.black_energy <= 0
+
+
+def must_skip_turn(state):
+    """True si al iniciar su turno el jugador actual no puede mover."""
+    return not can_player_move(state, state.turn)
+
+
 def is_game_over(state):
     """
     Fin de partida según el PDF:
     - No quedan casillas con puntos (estrellas), o
+    - Ambos sin energía, o
     - Ninguno de los dos jugadores puede realizar movimientos legales.
     """
     if state.stars_count == 0:
+        return True
+    if both_players_without_energy(state):
         return True
     return not can_player_move(state, MAX) and not can_player_move(state, MIN)
 

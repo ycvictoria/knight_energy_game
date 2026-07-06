@@ -77,14 +77,14 @@ def _draw_knight_vector(screen, center_x, center_y, fill_color, outline_color):
     )
 
 
-def draw_knight(screen, position, is_white, knight_font=None):
+def draw_knight_at(screen, position, is_white, knight_font=None, jump_offset_y=0):
     """
-    Dibuja un caballo en la casilla (fila, columna).
-    is_white: True para caballo blanco (máquina), False para negro (humano).
+    Dibuja un caballo en posición (fila, columna); admite coordenadas float para animación.
+    jump_offset_y: desplazamiento vertical en px (salto en arco).
     """
     row, col = position
-    center_x = col * CELL_SIZE + CELL_SIZE // 2
-    center_y = row * CELL_SIZE + CELL_SIZE // 2
+    center_x = int(col * CELL_SIZE + CELL_SIZE // 2)
+    center_y = int(row * CELL_SIZE + CELL_SIZE // 2 - jump_offset_y)
 
     fill = (245, 245, 245) if is_white else (30, 30, 30)
     outline = (20, 20, 20) if is_white else (220, 220, 220)
@@ -98,9 +98,13 @@ def draw_knight(screen, position, is_white, knight_font=None):
         _draw_knight_vector(screen, center_x, center_y, fill, outline)
         return
 
-    # Sombra/contorno suave para legibilidad sobre casillas claras y oscuras
     shadow = knight_font.render(glyph, True, outline)
     sprite_rect = sprite.get_rect(center=(center_x, center_y))
     shadow_rect = shadow.get_rect(center=(center_x + 1, center_y + 1))
     screen.blit(shadow, shadow_rect)
     screen.blit(sprite, sprite_rect)
+
+
+def draw_knight(screen, position, is_white, knight_font=None):
+    """Alias de draw_knight_at para posiciones enteras en casilla."""
+    draw_knight_at(screen, position, is_white, knight_font)
