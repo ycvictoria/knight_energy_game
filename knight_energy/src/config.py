@@ -15,6 +15,8 @@ LIGHT_CELL = (240, 217, 181)
 DARK_CELL = (181, 136, 99)
 HIGHLIGHT_COLOR = (130, 151, 105)
 PANEL_BG = (40, 44, 52)
+# Variante más clara del panel, usada en menú y pantallas auxiliares
+MENU_BG = (62, 68, 80)
 TEXT_COLOR = (255, 255, 255)
 
 # Reglas del juego según el enunciado
