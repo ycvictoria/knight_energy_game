@@ -10,20 +10,33 @@ Glosario rápido:
 
 from src.ai.heuristics import utility
 from src.ai.move_ordering import sort_moves_best_first
-from src.game_logic.engine import apply_move, apply_penalty, get_moves_for_current_turn
+from src.config import MIN
+from src.game_logic.engine import (
+    apply_move,
+    apply_penalty,
+    get_legal_moves_for_player,
+    get_moves_for_current_turn,
+)
 
 
 def reached_search_limit(state, depth, max_depth):
-    """
-    ¿Parar de expandir el árbol aquí?
-    Sí si llegamos a la profundidad máxima o la partida ya terminó.
-    """
+    """¿Parar de expandir el árbol aquí?"""
     return depth >= max_depth or state.is_terminal()
 
 
 def _list_moves_to_explore(state, moves):
     """Movimientos ordenados: capturas y rayos primero (mejor poda alfa-beta)."""
     return sort_moves_best_first(state, moves)
+
+
+def _tiebreak_key(state, move):
+    """Desempate a favor de MAX: más energía, más puntos, menos movilidad rival."""
+    next_state = apply_move(state, move)
+    return (
+        next_state.white_energy,
+        next_state.white_score,
+        -len(get_legal_moves_for_player(next_state, MIN)),
+    )
 
 
 def max_value(state, alpha, beta, depth, max_depth):
@@ -70,6 +83,7 @@ def minimax_decision(state, max_depth):
     """Elige la mejor casilla destino para MAX (máquina)."""
     best_move = None
     best_value = float("-inf")
+    best_tiebreak = None
     alpha = float("-inf")
     beta = float("inf")
 
@@ -78,11 +92,19 @@ def minimax_decision(state, max_depth):
         return None
 
     for move in _list_moves_to_explore(state, moves):
-        next_state = apply_move(state, move)
-        value = min_value(next_state, alpha, beta, depth=1, max_depth=max_depth)
+        value = min_value(
+            apply_move(state, move), alpha, beta, depth=1, max_depth=max_depth
+        )
+        tiebreak = _tiebreak_key(state, move)
+
         if value > best_value:
             best_value = value
             best_move = move
+            best_tiebreak = tiebreak
+        elif value == best_value and (best_tiebreak is None or tiebreak > best_tiebreak):
+            best_move = move
+            best_tiebreak = tiebreak
+
         alpha = max(alpha, value)
 
     return best_move
