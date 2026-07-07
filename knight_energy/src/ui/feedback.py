@@ -3,7 +3,7 @@ Genera textos de feedback para movimientos, ítems y penalizaciones.
 """
 
 from src.config import MAX, MIN, PENALTY_POINTS
-from src.game_logic.engine import can_player_move, get_player_energy, result_state
+from src.game_logic.engine import can_player_move, get_player_energy, apply_move
 
 
 def _actor_name(player, player_name):
@@ -16,7 +16,7 @@ def describe_move(before_state, move, player, player_name):
     Retorna (float_labels, log_lines, after_state).
     float_labels: lista de dict {text, color, cell}
     """
-    after_state = result_state(before_state, move)
+    after_state = apply_move(before_state, move)
     actor = _actor_name(player, player_name)
     cell = before_state.board[move[0]][move[1]]
 

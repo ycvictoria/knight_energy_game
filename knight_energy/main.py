@@ -13,7 +13,7 @@ from src.config import HEIGHT, MAX, MIN, WIDTH
 from src.game_logic.engine import (
     apply_penalty,
     can_player_move,
-    get_valid_actions,
+    get_moves_for_current_turn,
     is_game_over,
     must_skip_turn,
 )
@@ -22,7 +22,7 @@ from src.ui.animation import animate_knight_jump, animate_penalty_feedback
 from src.ui.feedback import describe_move, describe_penalty, describe_turn_hint
 from src.ui.fonts import load_game_fonts
 from src.ui.menu import DifficultyMenu
-from src.ui.renderer import GameRenderer
+from src.ui.renderer import GameLog, GameRenderer
 
 
 def run_menu(screen, clock, fonts):
@@ -98,6 +98,8 @@ def run_game(screen, clock, renderer, player_name, max_depth):
     state = GameState(generate_random=True)
     game_over = False
     machine_turn_pending = True
+    renderer.game_log = GameLog()
+    renderer.game_log.add("Partida iniciada. La Maquina mueve primero.")
 
     while True:
         if not game_over:
@@ -112,7 +114,7 @@ def run_game(screen, clock, renderer, player_name, max_depth):
                 renderer.draw_game(
                     screen,
                     state,
-                    get_valid_actions(state),
+                    get_moves_for_current_turn(state),
                     False,
                     player_name,
                     status_message="Pensando...",
@@ -146,12 +148,16 @@ def run_game(screen, clock, renderer, player_name, max_depth):
                 pygame.quit()
                 sys.exit()
 
+            if game_over and event.type == pygame.MOUSEBUTTONDOWN:
+                if renderer.is_restart_click(event.pos):
+                    return True
+
             if event.type == pygame.MOUSEBUTTONDOWN and not game_over and state.turn == MIN:
                 if not renderer.is_board_click(event.pos):
                     continue
 
                 move = renderer.board_cell_from_click(event.pos)
-                if move not in get_valid_actions(state):
+                if move not in get_moves_for_current_turn(state):
                     continue
 
                 state = apply_move_with_animation(
@@ -166,7 +172,7 @@ def run_game(screen, clock, renderer, player_name, max_depth):
         if game_over:
             renderer.draw_game_over(screen, state, player_name)
         elif not (machine_turn_pending and state.turn == MAX):
-            valid_moves = get_valid_actions(state)
+            valid_moves = get_moves_for_current_turn(state)
             highlight = state.turn == MIN
             status = None
             if state.turn == MIN and valid_moves:
@@ -193,8 +199,9 @@ def main():
     fonts = load_game_fonts()
     renderer = GameRenderer(fonts)
 
-    max_depth, player_name = run_menu(screen, clock, fonts)
-    run_game(screen, clock, renderer, player_name, max_depth)
+    while True:
+        max_depth, player_name = run_menu(screen, clock, fonts)
+        run_game(screen, clock, renderer, player_name, max_depth)
 
 
 if __name__ == "__main__":
