@@ -167,13 +167,16 @@ class GameRenderer:
             self.stat_value_font,
         )
 
-     
+        pygame.draw.line(
+            screen, (90, 95, 110), (panel_x + 8, 160), (panel_x + panel_width - 8, 160), 1
+        )
+
         display_name = player_name[:10] + ".." if len(player_name) > 12 else player_name
-        screen.blit(label.render(display_name, True, (255, 200, 140)), (panel_x + 10, 152))
+        screen.blit(label.render(display_name, True, (255, 200, 140)), (panel_x + 10, 178))
         draw_points_badge(
             screen,
             panel_x + 10,
-            170,
+            196,
             state.black_score,
             self.stat_value_font,
             self.stat_label_font,
@@ -181,7 +184,7 @@ class GameRenderer:
         draw_energy_bar(
             screen,
             panel_x + 10,
-            216,
+            242,
             panel_width - 50,
             state.black_energy,
             self.stat_label_font,
@@ -195,23 +198,23 @@ class GameRenderer:
             turn_text = f"Turno: {display_name}"
             turn_color = (120, 255, 160)
 
-        screen.blit(micro.render(turn_text, True, turn_color), (panel_x + 10, 252))
+        screen.blit(micro.render(turn_text, True, turn_color), (panel_x + 10, 278))
         screen.blit(
             micro.render(f"Monedas restantes: {state.stars_count}", True, (190, 190, 190)),
-            (panel_x + 10, 268),
+            (panel_x + 10, 294),
         )
 
         if status_message:
             status_color = (255, 200, 120) if "Pensando" in status_message else (255, 130, 130)
             status = micro.render(status_message[:30], True, status_color)
-            screen.blit(status, (panel_x + 10, 286))
+            screen.blit(status, (panel_x + 10, 312))
 
         pygame.draw.line(
-            screen, (90, 95, 110), (panel_x + 8, 308), (panel_x + panel_width - 8, 308), 1
+            screen, (90, 95, 110), (panel_x + 8, 334), (panel_x + panel_width - 8, 334), 1
         )
-        screen.blit(micro.render("Eventos:", True, (255, 220, 120)), (panel_x + 10, 318))
+        screen.blit(micro.render("Eventos:", True, (255, 220, 120)), (panel_x + 10, 344))
 
-        log_y = 336
+        log_y = 362
         max_text_width = panel_width - 20
         visible_lines = []
         for entry in self.game_log.lines:
@@ -250,7 +253,6 @@ class GameRenderer:
             TEXT_COLOR,
         )
         why = self.fonts["tiny"].render(reason, True, (200, 200, 200))
-        hint = self.fonts["tiny"].render("Cierra la ventana para salir", True, (180, 180, 180))
 
         center_y = HEIGHT // 2
         tx = WIDTH // 2 - title.get_width() // 2
@@ -258,7 +260,26 @@ class GameRenderer:
         screen.blit(title, (tx, center_y - 50))
         screen.blit(detail, (WIDTH // 2 - detail.get_width() // 2, center_y + 8))
         screen.blit(why, (WIDTH // 2 - why.get_width() // 2, center_y + 34))
-        screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, center_y + 58))
+
+        button_width, button_height = 220, 42
+        button_rect = pygame.Rect(
+            WIDTH // 2 - button_width // 2,
+            center_y + 62,
+            button_width,
+            button_height,
+        )
+        hovered = button_rect.collidepoint(pygame.mouse.get_pos())
+        fill = (100, 175, 120) if hovered else (78, 130, 98)
+        pygame.draw.rect(screen, fill, button_rect, border_radius=12)
+        pygame.draw.rect(screen, (255, 230, 100), button_rect, width=2, border_radius=12)
+        button_label = self.fonts["body"].render("Jugar de nuevo", True, TEXT_COLOR)
+        screen.blit(button_label, button_label.get_rect(center=button_rect.center))
+
+        self.game_over_restart_rect = button_rect
+        return button_rect
+
+    def is_restart_click(self, pos):
+        return hasattr(self, "game_over_restart_rect") and self.game_over_restart_rect.collidepoint(pos)
 
     @staticmethod
     def is_board_click(pos):
