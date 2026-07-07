@@ -164,10 +164,8 @@ python -m unittest tests.test_ai_improvements -v
 ```
 
 ---
-
-## Informe
-
-El informe académico del proyecto está en [`informe/informe.md`](informe/informe.md).
+<img width="598" height="470" alt="image" src="https://github.com/user-attachments/assets/c895bb38-7c27-4a80-8c34-7531cee2a912" />
+<img width="601" height="474" alt="image" src="https://github.com/user-attachments/assets/764e6e35-1b0e-4412-a2bc-dd009df84e56" />
 
 ---
 
