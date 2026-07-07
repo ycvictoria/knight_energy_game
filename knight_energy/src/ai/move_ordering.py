@@ -1,17 +1,13 @@
 """
-Mejora 2 — Orden de movimientos (move ordering).
+Orden de movimientos (move ordering) para mejorar la poda alfa-beta.
 
-Por qué:
-  Minimax da el mismo resultado sin importar el orden, pero alfa-beta poda antes
-  si explora primero las jugadas buenas (capturas, rayos con poca energía).
-
-Qué hace sort_moves_best_first:
-  1. Monedas: mayor valor primero (9 antes que 2)
-  2. Rayos: prioridad extra si energía <= 3
-  3. Casillas vacías: al final
+Explora primero capturas valiosas; con poca energía prioriza rayos sobre monedas pequeñas.
 """
 
+from src.ai.heuristics import LOW_ENERGY_THRESHOLD
 from src.game_logic.engine import get_player_energy
+
+LOW_ENERGY_ORDERING = 4  # por debajo de esto, rayos antes que monedas pequeñas
 
 
 def _move_importance_score(state, move):
@@ -21,15 +17,18 @@ def _move_importance_score(state, move):
     if cell is None:
         return 0
 
-    if cell["type"] == "star":
-        return 1000 + cell["value"]
+    energy = get_player_energy(state, state.turn)
 
     if cell["type"] == "lightning":
-        energy = get_player_energy(state, state.turn)
+        if energy <= LOW_ENERGY_ORDERING:
+            return 1250 + cell["value"]
         priority = 100 + cell["value"]
-        if energy <= 3:
-            priority += 50  # urgente recargar
+        if energy <= LOW_ENERGY_THRESHOLD:
+            priority += 80
         return priority
+
+    if cell["type"] == "star":
+        return 1000 + cell["value"]
 
     return 0
 

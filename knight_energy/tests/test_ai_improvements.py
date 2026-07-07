@@ -73,6 +73,21 @@ class MoveOrderingTests(unittest.TestCase):
         ordered = sort_moves_best_first(state, actions)
         self.assertEqual(ordered[0], high)
 
+    def test_lightning_before_small_star_when_low_energy(self):
+        """Con poca energía, recargar antes que una moneda pequeña."""
+        state = GameState(generate_random=False)
+        state.turn = MAX
+        state.white_pos = (0, 0)
+        state.white_energy = 3
+        state.board[2][1] = {"type": "star", "value": 2}
+        state.board[1][2] = {"type": "lightning", "value": 4}
+        star = (2, 1)
+        lightning = (1, 2)
+        actions = [star, lightning]
+
+        ordered = sort_moves_best_first(state, actions)
+        self.assertEqual(ordered[0], lightning)
+
 
 if __name__ == "__main__":
     unittest.main()

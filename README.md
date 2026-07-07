@@ -22,6 +22,7 @@ Si al **iniciar** tu turno no tienes energía suficiente para mover, pierdes **3
 | Elegir casilla válida | Clic en casilla **verde** |
 | Menú: nombre | Escribir y Enter |
 | Elegir dificultad | Clic en Principiante / Amateur / Experto |
+| Nueva partida | Botón **Jugar de nuevo** al finalizar |
 | Salir | Cerrar ventana |
 
 ---
@@ -65,6 +66,7 @@ python main.py
 3. Ningún jugador puede realizar un movimiento legal.
 
 ---
+
 ## Dificultad (profundidad minimax)
 
 | Nivel | Profundidad | Descripción |
@@ -79,13 +81,35 @@ python main.py
 
 - **Algoritmo:** minimax con **poda alfa-beta** y decisiones imperfectas (profundidad limitada).
 - **MAX** = máquina (blanco); **MIN** = humano (negro).
-- **Heurística** (nodos de corte):
+- **Orden de movimientos:** capturas de monedas y rayos urgentes se exploran primero para mejorar la poda (sin cambiar el resultado de minimax).
 
-  ```
-  EVAL(s) = 1000·Δpuntos + 15·Δenergía + 5·Δmovilidad + 50·estrellas_restantes
-  ```
+### Heurística (nodos de corte)
 
-- En estados terminales: **+∞** si gana MAX, **−∞** si gana MIN, **0** en empate.
+Evaluación lineal desde la perspectiva de MAX:
+
+```
+EVAL(s) = 1000·Δpuntos
+        + 35·Δenergía
+        + 5·Δmovilidad
+        + 50·Δmonedas_alcanzables
+        + 50·Δrayos_alcanzables
+        + ajuste_crisis_energética
+```
+
+| Término | Qué mide |
+|---------|----------|
+| Δpuntos | Diferencia de marcador (blanco − negro) |
+| Δenergía | Diferencia de energía |
+| Δmovilidad | Movimientos legales de MAX menos los de MIN |
+| Δmonedas alcanzables | Valor de monedas capturables en **1 salto** (MAX − MIN) |
+| Δrayos alcanzables | Rayos alcanzables con energía ≤ 6 (MAX − MIN) |
+| Crisis energética | Penalización si energía ≤ 2 sin rayo alcanzable |
+
+Los pesos priorizan puntos; energía y rayos evitan quedarse sin movimientos (−3 pts).
+
+**Desempate:** si dos movimientos tienen la misma evaluación, se prefiere más energía, más puntos y menos movilidad del rival.
+
+En estados terminales: **+∞** si gana MAX, **−∞** si gana MIN, **0** en empate.
 
 ---
 
@@ -93,23 +117,31 @@ python main.py
 
 ```
 knight_energy_game/
-├── knight_energy/
-│   ├── main.py                  # Punto de entrada
-│   ├── requirements.txt
-│   └── src/
-│       ├── config.py            # Constantes y dificultades
-│       ├── models/state.py      # Estado del juego
-│       ├── game_logic/engine.py # Reglas y movimientos
-│       ├── ai/
-│       │   ├── minimax.py       # Minimax + alfa-beta
-│       │   └── heuristics.py    # Función de evaluación
-│       └── ui/
-│           ├── menu.py          # Menú inicial
-│           ├── renderer.py      # Tablero y panel lateral
-│           ├── animation.py     # Salto del caballo
-│           ├── effects.py       # Iconos (moneda, rayo, barras)
-│           └── feedback.py      # Mensajes de eventos
-
+├── README.md
+├── informe/
+│   └── informe.md               # Informe del proyecto (entrega)
+└── knight_energy/
+    ├── main.py                  # Punto de entrada
+    ├── requirements.txt
+    ├── tests/
+    │   └── test_ai_improvements.py
+    └── src/
+        ├── config.py            # Constantes y dificultades
+        ├── models/state.py      # Estado del juego
+        ├── game_logic/engine.py # Reglas y movimientos
+        ├── ai/
+        │   ├── minimax.py       # Minimax + alfa-beta
+        │   ├── heuristics.py    # Función de evaluación
+        │   └── move_ordering.py # Orden de movimientos (poda)
+        └── ui/
+            ├── menu.py          # Menú inicial
+            ├── renderer.py      # Tablero y panel lateral
+            ├── animation.py     # Salto del caballo
+            ├── effects.py       # Iconos (moneda, rayo, barras)
+            ├── feedback.py      # Mensajes de eventos
+            ├── backgrounds.py   # Fondos del menú y panel
+            ├── fonts.py         # Tipografías
+            └── pieces.py        # Caballos Unicode
 ```
 
 ---
@@ -117,9 +149,25 @@ knight_energy_game/
 ## Interfaz
 
 - Tablero 8×8 con caballos Unicode (♘ / ♞).
-- Panel lateral con **Points** (círculo dorado) y **Energy** (barra).
+- Panel lateral con estadísticas de **Máquina** y **jugador** (Points y Energy), separadas visualmente.
 - Log de **Eventos** con explicación de cada jugada.
 - Animación de salto en arco y feedback visual (+puntos, ±energía).
+- Pantalla de fin de partida con botón para volver al menú de dificultad.
+
+---
+
+## Tests
+
+```bash
+cd knight_energy
+python -m unittest tests.test_ai_improvements -v
+```
+
+---
+
+## Informe
+
+El informe académico del proyecto está en [`informe/informe.md`](informe/informe.md).
 
 ---
 
